@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laptop Price Predictor Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8; /* Light blue background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            width: 400px;
+            background: #ffffff; /* White background for chat container */
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .chat-box {
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa; /* Slightly off-white for chat box */
+        }
+
+        .chat-box div {
+            margin: 5px 0;
+        }
+
+        .user-msg {
+            text-align: right;
+            color: #007bff;
+        }
+
+        .bot-msg {
+            text-align: left;
+            color: #28a745;
+        }
+
+        .loading {
+            font-style: italic;
+            color: #999;
+        }
+
+        input {
+            margin: 5px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            padding: 10px;
+            background-color: #007bff; /* Button color */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div id="chat-box" class="chat-box"></div>
+        <input type="text" id="input-specs" placeholder="Enter: Brand, RAM (GB), Processor, Graphics (GB), OS" required>
+        <button id="send-btn">Send</button>
+    </div>
+
+    <script>
+        document.getElementById("send-btn").addEventListener("click", async () => {
+            const specs = document.getElementById("input-specs").value.trim();
+            const specsArray = specs.split(',').map(item => item.trim());
+
+            // Allow 2 or more fields
+            if (specsArray.length < 2) {
+                alert("Please enter at least 2 fields: Brand, RAM (GB), Processor, Graphics (GB), OS.");
+                return;
+            }
+
+            // Extract fields safely
+            const [brand, ram_gb = "N/A", processor_brand = "N/A", graphic_card_gb = "N/A", os = "N/A"] = specsArray;
+
+            appendMessage("You", specs, "user-msg");
+
+            // Show loading message
+            const loadingMessage = appendMessage("Bot", "Thinking...", "loading");
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/query_laptops/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        brand: brand.trim(),
+                        ram_gb: ram_gb !== "N/A" ? parseInt(ram_gb) : undefined,
+                        processor_brand: processor_brand.trim(),
+                        graphic_card_gb: graphic_card_gb !== "N/A" ? parseFloat(graphic_card_gb) : undefined,
+                        os: os.trim()
+                    })
+                });
+
+                // Remove loading message
+                loadingMessage.remove();
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    appendMessage("Bot", errorData.detail || "An error occurred.", "bot-msg");
+                } else {
+                    const data = await response.text();
+                    appendMessage("Bot", data, "bot-msg");
+                }
+            } catch (error) {
+                loadingMessage.remove();
+                appendMessage("Bot", "There was a problem with the request.", "bot-msg");
+            }
+            
+            // Clear input
+            document.getElementById("input-specs").value = '';
+        });
+
+        function appendMessage(sender, message, className) {
+            const chatBox = document.getElementById("chat-box");
+            const messageDiv = document.createElement("div");
+            messageDiv.className = className;
+            messageDiv.innerText = `${sender}: ${message}`;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+            return messageDiv; // Return for loading message removal
+        }
+    </script>
+</body>
+</html>
